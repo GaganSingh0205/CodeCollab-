@@ -1,0 +1,2727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeCollab - Real-time Collaborative Coding Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #4361ee;
+            --secondary: #3a0ca3;
+            --accent: #7209b7;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4cc9f0;
+            --warning: #f72585;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --dark-bg: #1a1d29;
+            --darker-bg: #141620;
+            --editor-bg: #1e1e1e;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, var(--darker-bg), #0f1117);
+            color: white;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 15px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .logo i {
+            font-size: 28px;
+            margin-right: 10px;
+            color: var(--success);
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            
+        }
+
+        .logo h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            
+        }
+
+        .nav-links {
+            flex: 1;
+        }
+
+        .nav-links a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-left: 3px solid var(--success);
+        }
+
+        .nav-links a i {
+            margin-right: 12px;
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .nav-links a .badge {
+            background: var(--warning);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        .user-info {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--warning));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .online::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            bottom: 0;
+            right: 0;
+            border: 2px solid var(--darker-bg);
+        }
+
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--dark-bg);
+        }
+
+        .header {
+            background: rgba(30, 30, 30, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.2);
+            z-index: 99;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 8px 15px;
+            width: 400px;
+            transition: all 0.3s;
+        }
+
+        .search-bar:focus-within {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+
+        .search-bar input {
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            margin-left: 10px;
+            color: white;
+        }
+
+        .search-bar input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-actions button {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin-left: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .header-actions button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+        }
+
+        .header-actions button i {
+            margin-right: 5px;
+        }
+
+        .header-actions .notification {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .header-actions .notification:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .header-actions .notification::after {
+            content: '3';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--warning);
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+
+        .card {
+            background: rgba(30, 30, 30, 0.5);
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-header h2 {
+            font-size: 20px;
+            color: var(--light);
+            font-weight: 600;
+        }
+
+        .card-header button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.7);
+            transition: all 0.3s;
+        }
+
+        .card-header button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .card-header button i {
+            margin-right: 5px;
+        }
+
+        /* Editor Styles */
+        .editor-container {
+            background: var(--editor-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .editor-toolbar {
+            background: #2d2d30;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #cccccc;
+            font-size: 14px;
+        }
+
+        .editor-toolbar .file-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .editor-toolbar .file-info i {
+            margin-right: 8px;
+            color: var(--success);
+        }
+
+        .editor-toolbar .editor-actions {
+            display: flex;
+        }
+
+        .editor-toolbar .editor-actions button {
+            background: transparent;
+            border: none;
+            color: #cccccc;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .editor-toolbar .editor-actions button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .editor-area {
+            height: 300px;
+            padding: 15px;
+            color: #d4d4d4;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-y: auto;
+            white-space: pre;
+        }
+
+        .editor-line {
+            display: flex;
+            margin-bottom: 2px;
+        }
+
+        .line-number {
+            width: 40px;
+            text-align: right;
+            padding-right: 15px;
+            color: #6e7681;
+            user-select: none;
+        }
+
+        .line-content {
+            flex: 1;
+        }
+
+        .keyword {
+            color: #569cd6;
+        }
+
+        .function {
+            color: #dcdcaa;
+        }
+
+        .string {
+            color: #ce9178;
+        }
+
+        .comment {
+            color: #6a9955;
+        }
+
+        .variable {
+            color: #9cdcfe;
+        }
+
+        /* Collaboration Panel */
+        .collaborators {
+            display: flex;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .collaborator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+
+        .collaborator-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--warning));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 5px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .collaborator-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .online::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--success);
+            border-radius: 50%;
+            bottom: 0;
+            right: 0;
+            border: 2px solid var(--editor-bg);
+        }
+
+        /* AI Assistant */
+        .ai-assistant {
+            background: linear-gradient(135deg, #4361ee, #3a0ca3);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-assistant::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            animation: pulse 6s infinite linear;
+        }
+
+        @keyframes pulse {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .ai-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .ai-header i {
+            font-size: 24px;
+            margin-right: 10px;
+            color: var(--success);
+        }
+
+        .ai-suggestions {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .suggestion {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .suggestion:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+
+        .suggestion:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion i {
+            margin-right: 10px;
+            color: var(--success);
+        }
+
+        /* Activity Feed */
+        .activity-item {
+            display: flex;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+
+        .activity-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-content p {
+            margin-bottom: 5px;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            border-bottom: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Progress Bars */
+        .progress-container {
+            margin-bottom: 15px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        /* File Explorer */
+        .file-explorer {
+            margin-top: 20px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            padding-left: 10px;
+        }
+
+        .file-item i {
+            margin-right: 10px;
+            color: var(--success);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1100px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            .nav-links {
+                display: flex;
+                overflow-x: auto;
+            }
+            .nav-links a {
+                flex-shrink: 0;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+            }
+            .nav-links a:hover, .nav-links a.active {
+                border-left: none;
+                border-bottom: 3px solid var(--success);
+            }
+            .user-info {
+                display: none;
+            }
+            .search-bar {
+                width: 200px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        /* Terminal */
+        .terminal {
+            background: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-header {
+            background: #2d2d30;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            color: #cccccc;
+            font-size: 14px;
+        }
+
+        .terminal-header i {
+            margin-right: 8px;
+            color: var(--success);
+        }
+
+        .terminal-content {
+            padding: 15px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            height: 150px;
+            overflow-y: auto;
+        }
+
+        .terminal-content .command {
+            color: #569cd6;
+        }
+
+        .terminal-content .output {
+            color: #cccccc;
+        }
+
+        /* Login Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: var(--darker-bg);
+            border-radius: 12px;
+            padding: 30px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 25px;
+            margin-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.3);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+        }
+
+        .modal-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .modal-footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--darker-bg);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            z-index: 1001;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .toast.success i {
+            color: var(--success);
+        }
+
+        .toast.error i {
+            color: var(--warning);
+        }
+
+        .toast.info i {
+            color: var(--primary);
+        }
+
+        /* Table Styles */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .table th, .table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .table th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Form Styles */
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: rgba(76, 201, 240, 0.2);
+            color: var(--success);
+        }
+
+        .status-inactive {
+            background: rgba(108, 117, 125, 0.2);
+            color: var(--gray);
+        }
+
+        .status-pending {
+            background: rgba(247, 37, 133, 0.2);
+            color: var(--warning);
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .grid-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .grid-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        /* Code Syntax */
+        .code-block {
+            background: var(--editor-bg);
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        /* Settings Sections */
+        .settings-section {
+            margin-bottom: 30px;
+        }
+
+        .settings-section h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Welcome to CodeCollab</h2>
+                <p>Sign in to your account</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="login-btn">Sign In</button>
+            </form>
+            <div class="modal-footer">
+                <p>Don't have an account? <a href="#" id="showRegister">Sign up</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Account</h2>
+                <p>Join CodeCollab today</p>
+            </div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="regName">Full Name</label>
+                    <input type="text" id="regName" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Email</label>
+                    <input type="email" id="regEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" placeholder="Create a password" required>
+                </div>
+                <div class="form-group">
+                    <label for="regConfirmPassword">Confirm Password</label>
+                    <input type="password" id="regConfirmPassword" placeholder="Confirm your password" required>
+                </div>
+                <button type="submit" class="login-btn">Create Account</button>
+            </form>
+            <div class="modal-footer">
+                <p>Already have an account? <a href="#" id="showLogin">Sign in</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Operation completed successfully</span>
+    </div>
+
+    <!-- Main App -->
+    <div class="container" id="app" style="display: none;">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-code"></i>
+                <h1>CodeCollab</h1>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="active" data-page="dashboard"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="#" data-page="projects"><i class="fas fa-project-diagram"></i> Projects <span class="badge">3</span></a>
+                <a href="#" data-page="editor"><i class="fas fa-code"></i> Editor</a>
+                <a href="#" data-page="team"><i class="fas fa-users"></i> Team <span class="badge">5</span></a>
+                <a href="#" data-page="chat"><i class="fas fa-comments"></i> Chat</a>
+                <a href="#" data-page="version"><i class="fas fa-history"></i> Version Control</a>
+                <a href="#" data-page="security"><i class="fas fa-shield-alt"></i> Security</a>
+                <a href="#" data-page="analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                <a href="#" data-page="settings"><i class="fas fa-cog"></i> Settings</a>
+                <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar online" id="userAvatar">AD</div>
+                <div>
+                    <div style="font-weight: bold;" id="userName">Ashutosh Dwivedi</div>
+                    <div style="font-size: 12px; opacity: 0.8;">Admin • Online</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search projects, files, or team members...">
+                </div>
+                <div class="header-actions">
+                    <button id="newProjectBtn"><i class="fas fa-plus"></i> New Project</button>
+                    <button id="inviteBtn"><i class="fas fa-share-alt"></i> Invite</button>
+                    <div class="notification" id="notificationBtn">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-area" id="contentArea">
+                <!-- Page content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Backend Simulation - Complete implementation
+        class CodeCollabBackend {
+            constructor() {
+                this.users = JSON.parse(localStorage.getItem('codecollab_users')) || [
+                    { id: 1, name: "Ashutosh Dwivedi", email: "ashutosh@codecollab.com", password: "password", avatar: "AD", role: "admin", status: "active" },
+                    { id: 2, name: "Gagan Singh", email: "gagan@codecollab.com", password: "password", avatar: "GS", role: "developer", status: "active" },
+                    { id: 3, name: "Vinayak Sharma", email: "vinayak@codecollab.com", password: "password", avatar: "VS", role: "developer", status: "active" },
+                    { id: 4, name: "Priya Patel", email: "priya@codecollab.com", password: "password", avatar: "PP", role: "designer", status: "active" },
+                    { id: 5, name: "Rahul Kumar", email: "rahul@codecollab.com", password: "password", avatar: "RK", role: "developer", status: "inactive" }
+                ];
+                
+                this.projects = JSON.parse(localStorage.getItem('codecollab_projects')) || [
+                    { 
+                        id: 1, 
+                        name: "E-Commerce Platform", 
+                        description: "Working on the payment integration module", 
+                        progress: 72,
+                        status: "active",
+                        collaborators: [1, 2, 3],
+                        technologies: ["React", "Node.js", "MongoDB"],
+                        createdAt: "2024-01-15",
+                        files: [
+                            { name: "payment-handler.js", content: `const stripe = require('stripe')('sk_test_...');\n\n// Handle payment intent creation\nconst createPaymentIntent = async (req, res) => {\n  try {\n    const { amount, currency } = req.body;\n    const paymentIntent = await stripe.paymentIntents.create({\n      amount,\n      currency,\n    });\n    res.json({ clientSecret: paymentIntent.client_secret });\n  } catch (error) {\n    res.status(500).json({ error: error.message });\n  }\n};` },
+                            { name: "user-auth.js", content: "// User authentication module" },
+                            { name: "product-catalog.js", content: "// Product catalog API" }
+                        ],
+                        commits: [
+                            { id: "a1b2c3d", message: "Initial payment setup", author: "Ashutosh Dwivedi", date: "2024-03-20", time: "14:30" },
+                            { id: "b2c3d4e", message: "Fix authentication bug", author: "Gagan Singh", date: "2024-03-19", time: "11:15" }
+                        ]
+                    },
+                    { 
+                        id: 2, 
+                        name: "Task Management App", 
+                        description: "Collaborative task management solution", 
+                        progress: 45,
+                        status: "active",
+                        collaborators: [1, 4],
+                        technologies: ["Vue.js", "Express", "PostgreSQL"],
+                        createdAt: "2024-02-10",
+                        files: [
+                            { name: "main.js", content: "// Main application file" }
+                        ],
+                        commits: []
+                    }
+                ];
+                
+                this.messages = JSON.parse(localStorage.getItem('codecollab_messages')) || [
+                    { id: 1, userId: 2, content: "I've completed the user authentication module. Ready for review.", timestamp: new Date(Date.now() - 120000).toISOString() },
+                    { id: 2, userId: 1, content: "Great! I'll review it after finishing the payment integration.", timestamp: new Date().toISOString() }
+                ];
+                
+                this.securityLogs = JSON.parse(localStorage.getItem('codecollab_security')) || [
+                    { id: 1, action: "User Login", user: "Ashutosh Dwivedi", timestamp: new Date().toISOString(), status: "Success", ip: "192.168.1.100" },
+                    { id: 2, action: "File Access", user: "Gagan Singh", timestamp: new Date(Date.now() - 3600000).toISOString(), status: "Success", ip: "192.168.1.101" },
+                    { id: 3, action: "Failed Login", user: "Unknown", timestamp: new Date(Date.now() - 7200000).toISOString(), status: "Failed", ip: "192.168.1.150" }
+                ];
+                
+                this.analytics = JSON.parse(localStorage.getItem('codecollab_analytics')) || {
+                    codeQuality: 88,
+                    testCoverage: 65,
+                    documentation: 42,
+                    teamProductivity: 78,
+                    activeUsers: 4,
+                    totalProjects: 2,
+                    commitsThisWeek: 12
+                };
+                
+                this.currentUser = JSON.parse(localStorage.getItem('codecollab_currentUser')) || null;
+                this.currentProject = JSON.parse(localStorage.getItem('codecollab_currentProject')) || this.projects[0];
+                this.socket = null;
+                
+                this.init();
+            }
+            
+            init() {
+                // Initialize Socket.IO connection simulation
+                this.socket = {
+                    emit: (event, data) => {
+                        console.log(`Socket event: ${event}`, data);
+                        // In a real app, this would send data to the server
+                    },
+                    on: (event, callback) => {
+                        console.log(`Socket listener added: ${event}`);
+                        // In a real app, this would listen for server events
+                    }
+                };
+                
+                // Load initial UI based on authentication status
+                if (this.currentUser) {
+                    this.showApp();
+                } else {
+                    this.showLogin();
+                }
+            }
+            
+            // Authentication methods
+            login(email, password) {
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        const user = this.users.find(u => u.email === email && u.password === password);
+                        if (user) {
+                            this.currentUser = user;
+                            localStorage.setItem('codecollab_currentUser', JSON.stringify(user));
+                            
+                            // Log security event
+                            this.securityLogs.unshift({
+                                id: this.securityLogs.length + 1,
+                                action: "User Login",
+                                user: user.name,
+                                timestamp: new Date().toISOString(),
+                                status: "Success",
+                                ip: "192.168.1.100"
+                            });
+                            localStorage.setItem('codecollab_security', JSON.stringify(this.securityLogs));
+                            
+                            resolve(user);
+                        } else {
+                            // Log failed attempt
+                            this.securityLogs.unshift({
+                                id: this.securityLogs.length + 1,
+                                action: "Failed Login",
+                                user: "Unknown",
+                                timestamp: new Date().toISOString(),
+                                status: "Failed",
+                                ip: "192.168.1.150"
+                            });
+                            localStorage.setItem('codecollab_security', JSON.stringify(this.securityLogs));
+                            
+                            reject(new Error("Invalid email or password"));
+                        }
+                    }, 1000);
+                });
+            }
+            
+            register(name, email, password) {
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        if (this.users.find(u => u.email === email)) {
+                            reject(new Error("User already exists with this email"));
+                            return;
+                        }
+                        
+                        const newUser = {
+                            id: this.users.length + 1,
+                            name,
+                            email,
+                            password,
+                            avatar: name.split(' ').map(n => n[0]).join(''),
+                            role: "developer",
+                            status: "active"
+                        };
+                        
+                        this.users.push(newUser);
+                        localStorage.setItem('codecollab_users', JSON.stringify(this.users));
+                        this.currentUser = newUser;
+                        localStorage.setItem('codecollab_currentUser', JSON.stringify(newUser));
+                        resolve(newUser);
+                    }, 1000);
+                });
+            }
+            
+            logout() {
+                // Log security event
+                this.securityLogs.unshift({
+                    id: this.securityLogs.length + 1,
+                    action: "User Logout",
+                    user: this.currentUser.name,
+                    timestamp: new Date().toISOString(),
+                    status: "Success",
+                    ip: "192.168.1.100"
+                });
+                localStorage.setItem('codecollab_security', JSON.stringify(this.securityLogs));
+                
+                this.currentUser = null;
+                localStorage.removeItem('codecollab_currentUser');
+                this.showLogin();
+            }
+            
+            // Project methods
+            getProjects() {
+                return this.projects;
+            }
+            
+            createProject(name, description) {
+                const newProject = {
+                    id: this.projects.length + 1,
+                    name,
+                    description,
+                    progress: 0,
+                    status: "active",
+                    collaborators: [this.currentUser.id],
+                    technologies: [],
+                    createdAt: new Date().toISOString().split('T')[0],
+                    files: [
+                        { name: "index.js", content: "// Welcome to your new project!" }
+                    ],
+                    commits: []
+                };
+                
+                this.projects.push(newProject);
+                localStorage.setItem('codecollab_projects', JSON.stringify(this.projects));
+                
+                // Update analytics
+                this.analytics.totalProjects = this.projects.length;
+                localStorage.setItem('codecollab_analytics', JSON.stringify(this.analytics));
+                
+                return newProject;
+            }
+            
+            updateFile(projectId, fileName, content) {
+                const project = this.projects.find(p => p.id === projectId);
+                if (project) {
+                    let file = project.files.find(f => f.name === fileName);
+                    if (file) {
+                        file.content = content;
+                    } else {
+                        project.files.push({ name: fileName, content });
+                    }
+                    localStorage.setItem('codecollab_projects', JSON.stringify(this.projects));
+                    
+                    // Simulate real-time collaboration
+                    this.socket.emit('file-update', {
+                        projectId,
+                        fileName,
+                        content,
+                        user: this.currentUser.name
+                    });
+                }
+            }
+            
+            addCommit(projectId, message) {
+                const project = this.projects.find(p => p.id === projectId);
+                if (project) {
+                    const commit = {
+                        id: Math.random().toString(36).substr(2, 7),
+                        message,
+                        author: this.currentUser.name,
+                        date: new Date().toISOString().split('T')[0],
+                        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                    };
+                    
+                    project.commits.unshift(commit);
+                    localStorage.setItem('codecollab_projects', JSON.stringify(this.projects));
+                    
+                    // Update analytics
+                    this.analytics.commitsThisWeek++;
+                    localStorage.setItem('codecollab_analytics', JSON.stringify(this.analytics));
+                    
+                    return commit;
+                }
+            }
+            
+            // Team methods
+            getTeamMembers() {
+                return this.users;
+            }
+            
+            inviteUser(email, role) {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        // In a real app, this would send an invitation email
+                        this.showToast(`Invitation sent to ${email}`, 'success');
+                        resolve();
+                    }, 1000);
+                });
+            }
+            
+            // Message methods
+            getMessages() {
+                return this.messages.map(msg => {
+                    const user = this.users.find(u => u.id === msg.userId);
+                    return {
+                        ...msg,
+                        user: user
+                    };
+                });
+            }
+            
+            sendMessage(content) {
+                const message = {
+                    id: this.messages.length + 1,
+                    userId: this.currentUser.id,
+                    content,
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.messages.push(message);
+                localStorage.setItem('codecollab_messages', JSON.stringify(this.messages));
+                return message;
+            }
+            
+            // UI methods
+            showLogin() {
+                document.getElementById('loginModal').style.display = 'flex';
+                document.getElementById('app').style.display = 'none';
+            }
+            
+            showApp() {
+                document.getElementById('loginModal').style.display = 'none';
+                document.getElementById('registerModal').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                
+                // Update UI with current user
+                document.getElementById('userName').textContent = this.currentUser.name;
+                document.getElementById('userAvatar').textContent = this.currentUser.avatar;
+                
+                // Load dashboard
+                this.loadPage('dashboard');
+            }
+            
+            loadPage(page) {
+                const contentArea = document.getElementById('contentArea');
+                
+                // Update active nav link
+                document.querySelectorAll('.nav-links a').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('data-page') === page) {
+                        link.classList.add('active');
+                    }
+                });
+                
+                // Load page content
+                switch(page) {
+                    case 'dashboard':
+                        contentArea.innerHTML = this.getDashboardHTML();
+                        this.initDashboard();
+                        break;
+                    case 'projects':
+                        contentArea.innerHTML = this.getProjectsHTML();
+                        this.initProjects();
+                        break;
+                    case 'editor':
+                        contentArea.innerHTML = this.getEditorHTML();
+                        this.initEditor();
+                        break;
+                    case 'team':
+                        contentArea.innerHTML = this.getTeamHTML();
+                        this.initTeam();
+                        break;
+                    case 'chat':
+                        contentArea.innerHTML = this.getChatHTML();
+                        this.initChat();
+                        break;
+                    case 'version':
+                        contentArea.innerHTML = this.getVersionHTML();
+                        this.initVersion();
+                        break;
+                    case 'security':
+                        contentArea.innerHTML = this.getSecurityHTML();
+                        this.initSecurity();
+                        break;
+                    case 'analytics':
+                        contentArea.innerHTML = this.getAnalyticsHTML();
+                        this.initAnalytics();
+                        break;
+                    case 'settings':
+                        contentArea.innerHTML = this.getSettingsHTML();
+                        this.initSettings();
+                        break;
+                    default:
+                        contentArea.innerHTML = `<div class="card"><h2>${page.charAt(0).toUpperCase() + page.slice(1)} Page</h2><p>This page is under construction.</p></div>`;
+                }
+            }
+            
+            getDashboardHTML() {
+                const project = this.currentProject;
+                const collaborators = project.collaborators.map(id => 
+                    this.users.find(u => u.id === id)
+                );
+                
+                return `
+                    <div class="dashboard">
+                        <div>
+                            <div class="card fade-in">
+                                <div class="card-header">
+                                    <h2>Current Project: ${project.name}</h2>
+                                    <button><i class="fas fa-ellipsis-h"></i> More</button>
+                                </div>
+                                <div class="collaborators">
+                                    ${collaborators.map(user => `
+                                        <div class="collaborator">
+                                            <div class="collaborator-avatar online">${user.avatar}</div>
+                                            <div style="font-size: 12px;">${user.name.split(' ')[0]}</div>
+                                        </div>
+                                    `).join('')}
+                                    <div class="collaborator">
+                                        <div class="collaborator-avatar" style="background: var(--gray);"><i class="fas fa-plus"></i></div>
+                                        <div style="font-size: 12px;">Add</div>
+                                    </div>
+                                </div>
+                                <p>${project.description}</p>
+                                
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Project Completion</span>
+                                        <span>${project.progress}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${project.progress}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tabs">
+                                <div class="tab active" data-tab="editor">Code Editor</div>
+                                <div class="tab" data-tab="terminal">Terminal</div>
+                                <div class="tab" data-tab="files">File Explorer</div>
+                            </div>
+
+                            <div class="tab-content active" id="editor">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h2>Code Editor</h2>
+                                        <div>
+                                            <button><i class="fas fa-expand"></i> Fullscreen</button>
+                                            <button><i class="fas fa-play"></i> Run</button>
+                                        </div>
+                                    </div>
+                                    <div class="editor-container">
+                                        <div class="editor-toolbar">
+                                            <div class="file-info">
+                                                <i class="fas fa-file-code"></i>
+                                                <span>payment-handler.js</span>
+                                            </div>
+                                            <div class="editor-actions">
+                                                <button id="saveFileBtn"><i class="fas fa-save"></i> Save</button>
+                                                <button><i class="fas fa-share"></i> Share</button>
+                                                <button><i class="fas fa-code-branch"></i> Branch</button>
+                                            </div>
+                                        </div>
+                                        <div class="editor-area" id="editorArea" contenteditable="true">${project.files[0].content}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-content" id="terminal">
+                                <div class="terminal">
+                                    <div class="terminal-header">
+                                        <i class="fas fa-terminal"></i>
+                                        <span>Terminal</span>
+                                    </div>
+                                    <div class="terminal-content" id="terminalContent">
+                                        <div><span class="command">$</span> npm install stripe</div>
+                                        <div class="output">+ stripe@12.0.0</div>
+                                        <div class="output">added 1 package in 2.3s</div>
+                                        <div><span class="command">$</span> git status</div>
+                                        <div class="output">On branch feature/payment-integration</div>
+                                        <div class="output">Changes not staged for commit:</div>
+                                        <div class="output">&nbsp;&nbsp;modified:   payment-handler.js</div>
+                                        <div><span class="command">$</span> _</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-content" id="files">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h2>File Explorer</h2>
+                                        <button><i class="fas fa-plus"></i> New File</button>
+                                    </div>
+                                    <div class="file-explorer">
+                                        ${project.files.map(file => `
+                                            <div class="file-item" data-file="${file.name}">
+                                                <i class="fas fa-file-code"></i>
+                                                <span>${file.name}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="ai-assistant">
+                                <div class="ai-header">
+                                    <i class="fas fa-robot"></i>
+                                    <h2>AI Code Assistant</h2>
+                                </div>
+                                <p>I've detected a potential improvement in your code. Consider adding input validation for the amount parameter.</p>
+                                <div class="ai-suggestions">
+                                    <div class="suggestion">
+                                        <i class="fas fa-lightbulb"></i>
+                                        <div>
+                                            <div style="font-weight: bold;">Suggestion</div>
+                                            <div>Add validation to ensure amount is a positive integer</div>
+                                        </div>
+                                    </div>
+                                    <div class="suggestion">
+                                        <i class="fas fa-shield-alt"></i>
+                                        <div>
+                                            <div style="font-weight: bold;">Security Tip</div>
+                                            <div>Store API keys in environment variables</div>
+                                        </div>
+                                    </div>
+                                    <div class="suggestion">
+                                        <i class="fas fa-bolt"></i>
+                                        <div>
+                                            <div style="font-weight: bold;">Performance</div>
+                                            <div>Consider adding error handling for network requests</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="card fade-in">
+                                <div class="card-header">
+                                    <h2>Team Chat</h2>
+                                    <button><i class="fas fa-ellipsis-h"></i></button>
+                                </div>
+                                <div style="height: 200px; overflow-y: auto; margin-bottom: 15px;" id="chatMessages">
+                                    ${this.getMessages().map(msg => `
+                                        <div class="activity-item">
+                                            <div class="activity-avatar" style="background: var(--accent);">${msg.user.avatar}</div>
+                                            <div class="activity-content">
+                                                <p><strong>${msg.user.name}</strong>: ${msg.content}</p>
+                                                <div class="activity-time">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div style="display: flex;">
+                                    <input type="text" placeholder="Type a message..." id="chatInput" style="flex: 1; padding: 10px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px 0 0 4px; background: rgba(255, 255, 255, 0.05); color: white;">
+                                    <button id="sendMessageBtn" style="background: var(--primary); color: white; border: none; padding: 0 15px; border-radius: 0 4px 4px 0; cursor: pointer;">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="card fade-in">
+                                <div class="card-header">
+                                    <h2>Version Control</h2>
+                                    <button><i class="fas fa-ellipsis-h"></i></button>
+                                </div>
+                                <div style="margin-bottom: 15px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                        <span>Current Branch</span>
+                                        <span style="font-weight: bold; color: var(--primary);">feature/payment-integration</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                        <span>Last Commit</span>
+                                        <span style="color: var(--gray);">15 minutes ago</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span>Uncommitted Changes</span>
+                                        <span style="color: var(--warning);">3 files</span>
+                                    </div>
+                                </div>
+                                <button style="width: 100%; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-weight: 500;">
+                                    <i class="fas fa-code-branch" style="margin-right: 8px;"></i> Commit Changes
+                                </button>
+                                <button style="width: 100%; background: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-sync-alt" style="margin-right: 8px;"></i> Pull Latest Changes
+                                </button>
+                            </div>
+
+                            <div class="card fade-in">
+                                <div class="card-header">
+                                    <h2>Project Analytics</h2>
+                                    <button><i class="fas fa-ellipsis-h"></i></button>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Code Quality</span>
+                                        <span>${this.analytics.codeQuality}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${this.analytics.codeQuality}%"></div>
+                                    </div>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Test Coverage</span>
+                                        <span>${this.analytics.testCoverage}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${this.analytics.testCoverage}%"></div>
+                                    </div>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Documentation</span>
+                                        <span>${this.analytics.documentation}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${this.analytics.documentation}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card fade-in">
+                                <div class="card-header">
+                                    <h2>Recent Activity</h2>
+                                    <button><i class="fas fa-ellipsis-h"></i></button>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-avatar" style="background: var(--success);">VS</div>
+                                    <div class="activity-content">
+                                        <p><strong>Vinayak Sharma</strong> pushed to branch <span style="color: var(--primary);">feature/user-dashboard</span></p>
+                                        <div class="activity-time">45 minutes ago</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-avatar" style="background: var(--accent);">GS</div>
+                                    <div class="activity-content">
+                                        <p><strong>Gagan Singh</strong> created a new branch <span style="color: var(--primary);">feature/auth-module</span></p>
+                                        <div class="activity-time">2 hours ago</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-avatar" style="background: var(--warning);">AD</div>
+                                    <div class="activity-content">
+                                        <p><strong>Ashutosh Dwivedi</strong> merged <span style="color: var(--primary);">feature/product-catalog</span> into main</p>
+                                        <div class="activity-time">5 hours ago</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initDashboard() {
+                // Tab functionality
+                const tabs = document.querySelectorAll('.tab');
+                const tabContents = document.querySelectorAll('.tab-content');
+                
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        const tabId = tab.getAttribute('data-tab');
+                        
+                        // Remove active class from all tabs and contents
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tabContents.forEach(c => c.classList.remove('active'));
+                        
+                        // Add active class to current tab and content
+                        tab.classList.add('active');
+                        document.getElementById(tabId).classList.add('active');
+                    });
+                });
+                
+                // File saving
+                document.getElementById('saveFileBtn').addEventListener('click', () => {
+                    const content = document.getElementById('editorArea').textContent;
+                    this.updateFile(this.currentProject.id, 'payment-handler.js', content);
+                    this.showToast('File saved successfully', 'success');
+                });
+                
+                // Chat functionality
+                document.getElementById('sendMessageBtn').addEventListener('click', () => {
+                    const input = document.getElementById('chatInput');
+                    const message = input.value.trim();
+                    
+                    if (message) {
+                        const newMessage = this.sendMessage(message);
+                        const chatMessages = document.getElementById('chatMessages');
+                        const newMessageElement = document.createElement('div');
+                        newMessageElement.className = 'activity-item';
+                        newMessageElement.innerHTML = `
+                            <div class="activity-avatar" style="background: var(--primary);">${this.currentUser.avatar}</div>
+                            <div class="activity-content">
+                                <p><strong>${this.currentUser.name}</strong>: ${message}</p>
+                                <div class="activity-time">Just now</div>
+                            </div>
+                        `;
+                        
+                        chatMessages.appendChild(newMessageElement);
+                        input.value = '';
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        
+                        // Simulate response
+                        setTimeout(() => {
+                            const teamMembers = this.users.filter(u => u.id !== this.currentUser.id && u.status === 'active');
+                            if (teamMembers.length > 0) {
+                                const responder = teamMembers[Math.floor(Math.random() * teamMembers.length)];
+                                const responses = [
+                                    "Thanks for the update!",
+                                    "I'll review that shortly.",
+                                    "Great work!",
+                                    "Can you share more details?",
+                                    "I'm working on it too."
+                                ];
+                                const response = responses[Math.floor(Math.random() * responses.length)];
+                                
+                                const responseMessage = this.sendMessage(response);
+                                const responseElement = document.createElement('div');
+                                responseElement.className = 'activity-item';
+                                responseElement.innerHTML = `
+                                    <div class="activity-avatar" style="background: var(--accent);">${responder.avatar}</div>
+                                    <div class="activity-content">
+                                        <p><strong>${responder.name}</strong>: ${response}</p>
+                                        <div class="activity-time">Just now</div>
+                                    </div>
+                                `;
+                                chatMessages.appendChild(responseElement);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            }
+                        }, 1000);
+                    }
+                });
+                
+                // Allow sending message with Enter key
+                document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        document.getElementById('sendMessageBtn').click();
+                    }
+                });
+            }
+            
+            getProjectsHTML() {
+                const projects = this.getProjects();
+                
+                return `
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>My Projects</h2>
+                            <button id="createProjectBtn" class="btn btn-primary"><i class="fas fa-plus"></i> New Project</button>
+                        </div>
+                        <div class="projects-list">
+                            ${projects.map(project => `
+                                <div class="project-item" style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1;">
+                                        <h3 style="margin-bottom: 5px;">${project.name}</h3>
+                                        <p style="color: rgba(255,255,255,0.7); margin-bottom: 10px;">${project.description}</p>
+                                        <div style="display: flex; gap: 10px; align-items: center;">
+                                            <div class="progress-bar" style="width: 200px;">
+                                                <div class="progress-fill" style="width: ${project.progress}%"></div>
+                                            </div>
+                                            <span>${project.progress}%</span>
+                                        </div>
+                                        <div style="margin-top: 10px;">
+                                            ${project.technologies.map(tech => `
+                                                <span class="status-badge status-active" style="margin-right: 5px;">${tech}</span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="btn btn-secondary open-project-btn" data-project="${project.id}">
+                                            <i class="fas fa-folder-open"></i> Open
+                                        </button>
+                                        <button class="btn btn-secondary settings-project-btn" data-project="${project.id}">
+                                            <i class="fas fa-cog"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initProjects() {
+                document.getElementById('createProjectBtn').addEventListener('click', () => {
+                    const name = prompt("Enter project name:");
+                    if (name) {
+                        const description = prompt("Enter project description:");
+                        this.createProject(name, description || "New project");
+                        this.loadPage('projects');
+                        this.showToast('Project created successfully', 'success');
+                    }
+                });
+                
+                document.querySelectorAll('.open-project-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const projectId = parseInt(e.target.getAttribute('data-project'));
+                        const project = this.projects.find(p => p.id === projectId);
+                        if (project) {
+                            this.currentProject = project;
+                            localStorage.setItem('codecollab_currentProject', JSON.stringify(project));
+                            this.loadPage('dashboard');
+                            this.showToast(`Opened project: ${project.name}`, 'info');
+                        }
+                    });
+                });
+            }
+            
+            getEditorHTML() {
+                return `
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Advanced Code Editor</h2>
+                            <div>
+                                <button class="btn btn-secondary"><i class="fas fa-expand"></i> Fullscreen</button>
+                                <button class="btn btn-primary"><i class="fas fa-play"></i> Run Code</button>
+                            </div>
+                        </div>
+                        <div class="editor-container">
+                            <div class="editor-toolbar">
+                                <div class="file-info">
+                                    <i class="fas fa-file-code"></i>
+                                    <select id="fileSelector" style="background: transparent; border: none; color: white; outline: none;">
+                                        ${this.currentProject.files.map(file => `
+                                            <option value="${file.name}">${file.name}</option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                                <div class="editor-actions">
+                                    <button class="btn btn-secondary"><i class="fas fa-save"></i> Save</button>
+                                    <button class="btn btn-secondary"><i class="fas fa-share"></i> Share</button>
+                                    <button class="btn btn-secondary"><i class="fas fa-code-branch"></i> New Branch</button>
+                                </div>
+                            </div>
+                            <div class="editor-area" id="advancedEditor" contenteditable="true">
+                                ${this.currentProject.files[0].content}
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <h3>Live Collaboration</h3>
+                            <div class="collaborators">
+                                ${this.currentProject.collaborators.map(id => {
+                                    const user = this.users.find(u => u.id === id);
+                                    return `
+                                        <div class="collaborator">
+                                            <div class="collaborator-avatar online">${user.avatar}</div>
+                                            <div style="font-size: 12px;">${user.name.split(' ')[0]}</div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initEditor() {
+                document.getElementById('fileSelector').addEventListener('change', (e) => {
+                    const fileName = e.target.value;
+                    const file = this.currentProject.files.find(f => f.name === fileName);
+                    if (file) {
+                        document.getElementById('advancedEditor').textContent = file.content;
+                    }
+                });
+            }
+            
+            getTeamHTML() {
+                const teamMembers = this.getTeamMembers();
+                
+                return `
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Team Members</h2>
+                                <button class="btn btn-primary" id="inviteTeamBtn"><i class="fas fa-user-plus"></i> Invite Member</button>
+                            </div>
+                            <div class="table-container">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Role</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${teamMembers.map(member => `
+                                            <tr>
+                                                <td>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <div class="collaborator-avatar ${member.status === 'active' ? 'online' : ''}">${member.avatar}</div>
+                                                        <div>
+                                                            <div style="font-weight: 500;">${member.name}</div>
+                                                            <div style="font-size: 12px; color: var(--gray);">${member.email}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>${member.role}</td>
+                                                <td>
+                                                    <span class="status-badge ${member.status === 'active' ? 'status-active' : 'status-inactive'}">
+                                                        ${member.status}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div style="display: flex; gap: 5px;">
+                                                        <button class="btn btn-secondary" style="padding: 4px 8px;">
+                                                            <i class="fas fa-envelope"></i>
+                                                        </button>
+                                                        <button class="btn btn-secondary" style="padding: 4px 8px;">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Team Statistics</h2>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-label">
+                                    <span>Active Members</span>
+                                    <span>${teamMembers.filter(m => m.status === 'active').length}/${teamMembers.length}</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${(teamMembers.filter(m => m.status === 'active').length / teamMembers.length) * 100}%"></div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 20px;">
+                                <h3 style="margin-bottom: 15px;">Role Distribution</h3>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Developers</span>
+                                        <span>${teamMembers.filter(m => m.role === 'developer').length}</span>
+                                    </div>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Designers</span>
+                                        <span>${teamMembers.filter(m => m.role === 'designer').length}</span>
+                                    </div>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Admins</span>
+                                        <span>${teamMembers.filter(m => m.role === 'admin').length}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initTeam() {
+                document.getElementById('inviteTeamBtn').addEventListener('click', () => {
+                    const email = prompt("Enter email address to invite:");
+                    if (email) {
+                        const role = prompt("Enter role (developer/designer/admin):", "developer");
+                        if (role) {
+                            this.inviteUser(email, role);
+                        }
+                    }
+                });
+            }
+            
+            getChatHTML() {
+                return `
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Team Chat</h2>
+                                <div>
+                                    <button class="btn btn-secondary"><i class="fas fa-video"></i> Start Call</button>
+                                    <button class="btn btn-secondary"><i class="fas fa-ellipsis-h"></i></button>
+                                </div>
+                            </div>
+                            <div style="height: 400px; overflow-y: auto; margin-bottom: 15px;" id="fullChatMessages">
+                                ${this.getMessages().map(msg => `
+                                    <div class="activity-item">
+                                        <div class="activity-avatar" style="background: var(--accent);">${msg.user.avatar}</div>
+                                        <div class="activity-content">
+                                            <p><strong>${msg.user.name}</strong>: ${msg.content}</p>
+                                            <div class="activity-time">${new Date(msg.timestamp).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" placeholder="Type a message..." id="fullChatInput" style="flex: 1; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: rgba(255, 255, 255, 0.05); color: white;">
+                                <button id="fullSendMessageBtn" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Active Conversations</h2>
+                            </div>
+                            <div style="margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 15px;">Direct Messages</h3>
+                                ${this.users.filter(u => u.id !== this.currentUser.id).map(user => `
+                                    <div class="activity-item" style="cursor: pointer;">
+                                        <div class="activity-avatar online">${user.avatar}</div>
+                                        <div class="activity-content">
+                                            <p><strong>${user.name}</strong></p>
+                                            <div class="activity-time">Last seen: Recently</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <div>
+                                <h3 style="margin-bottom: 15px;">Channels</h3>
+                                <div class="activity-item" style="cursor: pointer;">
+                                    <div class="activity-avatar" style="background: var(--primary);">
+                                        <i class="fas fa-hashtag"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p><strong># general</strong></p>
+                                        <div class="activity-time">Project discussions</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item" style="cursor: pointer;">
+                                    <div class="activity-avatar" style="background: var(--success);">
+                                        <i class="fas fa-hashtag"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p><strong># development</strong></p>
+                                        <div class="activity-time">Code and technical talks</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item" style="cursor: pointer;">
+                                    <div class="activity-avatar" style="background: var(--warning);">
+                                        <i class="fas fa-hashtag"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p><strong># random</strong></p>
+                                        <div class="activity-time">Off-topic discussions</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initChat() {
+                const chatMessages = document.getElementById('fullChatMessages');
+                const chatInput = document.getElementById('fullChatInput');
+                const sendBtn = document.getElementById('fullSendMessageBtn');
+                
+                sendBtn.addEventListener('click', () => {
+                    this.sendChatMessage(chatInput, chatMessages);
+                });
+                
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.sendChatMessage(chatInput, chatMessages);
+                    }
+                });
+                
+                // Auto-scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            sendChatMessage(input, messagesContainer) {
+                const message = input.value.trim();
+                if (message) {
+                    const newMessage = this.sendMessage(message);
+                    const newMessageElement = document.createElement('div');
+                    newMessageElement.className = 'activity-item';
+                    newMessageElement.innerHTML = `
+                        <div class="activity-avatar" style="background: var(--primary);">${this.currentUser.avatar}</div>
+                        <div class="activity-content">
+                            <p><strong>${this.currentUser.name}</strong>: ${message}</p>
+                            <div class="activity-time">Just now</div>
+                        </div>
+                    `;
+                    
+                    messagesContainer.appendChild(newMessageElement);
+                    input.value = '';
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            }
+            
+            getVersionHTML() {
+                const commits = this.currentProject.commits;
+                
+                return `
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Commit History</h2>
+                                <button class="btn btn-primary" id="newCommitBtn"><i class="fas fa-plus"></i> New Commit</button>
+                            </div>
+                            <div style="max-height: 500px; overflow-y: auto;">
+                                ${commits.length > 0 ? commits.map(commit => `
+                                    <div class="activity-item">
+                                        <div class="activity-avatar" style="background: var(--success);">
+                                            <i class="fas fa-code-commit"></i>
+                                        </div>
+                                        <div class="activity-content">
+                                            <p><strong>${commit.message}</strong></p>
+                                            <div style="font-size: 12px; color: var(--gray); margin: 5px 0;">
+                                                <code>${commit.id}</code> by ${commit.author}
+                                            </div>
+                                            <div class="activity-time">${commit.date} at ${commit.time}</div>
+                                        </div>
+                                    </div>
+                                `).join('') : `
+                                    <div style="text-align: center; padding: 40px; color: var(--gray);">
+                                        <i class="fas fa-code-commit" style="font-size: 48px; margin-bottom: 15px;"></i>
+                                        <p>No commits yet. Make your first commit to start tracking changes.</p>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Branches</h2>
+                                <button class="btn btn-primary"><i class="fas fa-code-branch"></i> New Branch</button>
+                            </div>
+                            <div style="margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 15px;">Active Branches</h3>
+                                <div class="activity-item">
+                                    <div class="activity-avatar" style="background: var(--primary);">
+                                        <i class="fas fa-code-branch"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p><strong>main</strong></p>
+                                        <div class="activity-time">Default branch</div>
+                                    </div>
+                                    <span class="status-badge status-active">Protected</span>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-avatar" style="background: var(--success);">
+                                        <i class="fas fa-code-branch"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p><strong>feature/payment-integration</strong></p>
+                                        <div class="activity-time">Active development</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-avatar" style="background: var(--accent);">
+                                        <i class="fas fa-code-branch"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p><strong>feature/user-authentication</strong></p>
+                                        <div class="activity-time">Ready for review</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 style="margin-bottom: 15px;">Pull Requests</h3>
+                                <div class="activity-item">
+                                    <div class="activity-avatar" style="background: var(--warning);">
+                                        <i class="fas fa-code-pull-request"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <p><strong>Add user authentication</strong></p>
+                                        <div class="activity-time">#24 by Gagan Singh</div>
+                                    </div>
+                                    <span class="status-badge status-pending">Review</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initVersion() {
+                document.getElementById('newCommitBtn').addEventListener('click', () => {
+                    const message = prompt("Enter commit message:");
+                    if (message) {
+                        this.addCommit(this.currentProject.id, message);
+                        this.loadPage('version');
+                        this.showToast('Commit created successfully', 'success');
+                    }
+                });
+            }
+            
+            getSecurityHTML() {
+                return `
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Security Logs</h2>
+                                <button class="btn btn-secondary"><i class="fas fa-download"></i> Export</button>
+                            </div>
+                            <div class="table-container">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Action</th>
+                                            <th>User</th>
+                                            <th>Timestamp</th>
+                                            <th>Status</th>
+                                            <th>IP Address</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${this.securityLogs.map(log => `
+                                            <tr>
+                                                <td>${log.action}</td>
+                                                <td>${log.user}</td>
+                                                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                                                <td>
+                                                    <span class="status-badge ${log.status === 'Success' ? 'status-active' : 'status-pending'}">
+                                                        ${log.status}
+                                                    </span>
+                                                </td>
+                                                <td>${log.ip}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Security Overview</h2>
+                            </div>
+                            <div class="grid grid-2" style="gap: 15px; margin-bottom: 20px;">
+                                <div class="card" style="background: rgba(76, 201, 240, 0.1);">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 24px; font-weight: bold; color: var(--success);">${this.securityLogs.filter(l => l.status === 'Success').length}</div>
+                                        <div>Successful Actions</div>
+                                    </div>
+                                </div>
+                                <div class="card" style="background: rgba(247, 37, 133, 0.1);">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 24px; font-weight: bold; color: var(--warning);">${this.securityLogs.filter(l => l.status === 'Failed').length}</div>
+                                        <div>Failed Attempts</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <h3 style="margin-bottom: 15px;">Recent Security Events</h3>
+                                ${this.securityLogs.slice(0, 5).map(log => `
+                                    <div class="activity-item">
+                                        <div class="activity-avatar" style="background: ${log.status === 'Success' ? 'var(--success)' : 'var(--warning)'};">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <div class="activity-content">
+                                            <p><strong>${log.action}</strong> by ${log.user}</p>
+                                            <div class="activity-time">${new Date(log.timestamp).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <div>
+                                <h3 style="margin-bottom: 15px;">Security Settings</h3>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Two-Factor Authentication
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Login Notifications
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox"> Require VPN
+                                    </label>
+                                </div>
+                                <button class="btn btn-primary" style="width: 100%;">Save Settings</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initSecurity() {
+                // Security page initialization
+            }
+            
+            getAnalyticsHTML() {
+                return `
+                    <div class="grid grid-3">
+                        <div class="card">
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: bold; color: var(--primary);">${this.analytics.codeQuality}%</div>
+                                <div>Code Quality</div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: bold; color: var(--success);">${this.analytics.testCoverage}%</div>
+                                <div>Test Coverage</div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: bold; color: var(--accent);">${this.analytics.teamProductivity}%</div>
+                                <div>Team Productivity</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-2" style="margin-top: 20px;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Project Statistics</h2>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-label">
+                                    <span>Active Projects</span>
+                                    <span>${this.projects.filter(p => p.status === 'active').length}</span>
+                                </div>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-label">
+                                    <span>Total Commits</span>
+                                    <span>${this.projects.reduce((total, project) => total + project.commits.length, 0)}</span>
+                                </div>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-label">
+                                    <span>Team Members</span>
+                                    <span>${this.users.filter(u => u.status === 'active').length}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Weekly Activity</h2>
+                            </div>
+                            <div style="padding: 20px;">
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Commits This Week</span>
+                                        <span>${this.analytics.commitsThisWeek}</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${Math.min(this.analytics.commitsThisWeek / 20 * 100, 100)}%"></div>
+                                    </div>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Files Modified</span>
+                                        <span>8</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 40%"></div>
+                                    </div>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Code Review</span>
+                                        <span>3</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 60%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-header">
+                            <h2>Performance Metrics</h2>
+                        </div>
+                        <div class="grid grid-3">
+                            <div style="text-align: center;">
+                                <div class="progress-bar" style="height: 20px; margin: 10px 0;">
+                                    <div class="progress-fill" style="width: 85%"></div>
+                                </div>
+                                <div>Response Time</div>
+                                <div style="font-size: 12px; color: var(--gray);">85% Optimal</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div class="progress-bar" style="height: 20px; margin: 10px 0;">
+                                    <div class="progress-fill" style="width: 92%"></div>
+                                </div>
+                                <div>Uptime</div>
+                                <div style="font-size: 12px; color: var(--gray);">92% This Month</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div class="progress-bar" style="height: 20px; margin: 10px 0;">
+                                    <div class="progress-fill" style="width: 78%"></div>
+                                </div>
+                                <div>Load Time</div>
+                                <div style="font-size: 12px; color: var(--gray);">78% Faster</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initAnalytics() {
+                // Analytics page initialization
+            }
+            
+            getSettingsHTML() {
+                return `
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Profile Settings</h2>
+                            </div>
+                            <div class="settings-section">
+                                <h3>Personal Information</h3>
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" value="${this.currentUser.name}" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" value="${this.currentUser.email}" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <input type="text" value="${this.currentUser.role}" class="form-control" disabled>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-section">
+                                <h3>Security</h3>
+                                <div class="form-group">
+                                    <label>Current Password</label>
+                                    <input type="password" placeholder="Enter current password" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>New Password</label>
+                                    <input type="password" placeholder="Enter new password" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Confirm New Password</label>
+                                    <input type="password" placeholder="Confirm new password" class="form-control">
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-primary" style="width: 100%;">Save Changes</button>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Preferences</h2>
+                            </div>
+                            <div class="settings-section">
+                                <h3>Editor Settings</h3>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Auto-save
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Syntax highlighting
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox"> Word wrap
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>Theme</label>
+                                    <select class="form-control">
+                                        <option>Dark</option>
+                                        <option>Light</option>
+                                        <option>High Contrast</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-section">
+                                <h3>Notifications</h3>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Email notifications
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Push notifications
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox"> SMS notifications
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-section">
+                                <h3>Language & Region</h3>
+                                <div class="form-group">
+                                    <label>Language</label>
+                                    <select class="form-control">
+                                        <option>English</option>
+                                        <option>Spanish</option>
+                                        <option>French</option>
+                                        <option>German</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Time Zone</label>
+                                    <select class="form-control">
+                                        <option>UTC-5:00 Eastern Time</option>
+                                        <option>UTC-8:00 Pacific Time</option>
+                                        <option>UTC+0:00 Greenwich Mean Time</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            initSettings() {
+                // Settings page initialization
+            }
+            
+            showToast(message, type = 'info') {
+                const toast = document.getElementById('toast');
+                const toastMessage = document.getElementById('toastMessage');
+                const icon = toast.querySelector('i');
+                
+                toastMessage.textContent = message;
+                toast.className = `toast ${type} show`;
+                
+                // Update icon based on type
+                icon.className = type === 'success' ? 'fas fa-check-circle' :
+                                type === 'error' ? 'fas fa-exclamation-circle' :
+                                'fas fa-info-circle';
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new CodeCollabBackend();
+            
+            // Login form handler
+            document.getElementById('loginForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                app.login(email, password)
+                    .then(user => {
+                        app.showToast(`Welcome back, ${user.name}!`, 'success');
+                        app.showApp();
+                    })
+                    .catch(error => {
+                        app.showToast(error.message, 'error');
+                    });
+            });
+            
+            // Register form handler
+            document.getElementById('registerForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('regName').value;
+                const email = document.getElementById('regEmail').value;
+                const password = document.getElementById('regPassword').value;
+                const confirmPassword = document.getElementById('regConfirmPassword').value;
+                
+                if (password !== confirmPassword) {
+                    app.showToast("Passwords don't match", 'error');
+                    return;
+                }
+                
+                app.register(name, email, password)
+                    .then(user => {
+                        app.showToast(`Account created for ${user.name}!`, 'success');
+                        app.showApp();
+                    })
+                    .catch(error => {
+                        app.showToast(error.message, 'error');
+                    });
+            });
+            
+            // Show register modal
+            document.getElementById('showRegister').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('loginModal').style.display = 'none';
+                document.getElementById('registerModal').style.display = 'flex';
+            });
+            
+            // Show login modal
+            document.getElementById('showLogin').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('registerModal').style.display = 'none';
+                document.getElementById('loginModal').style.display = 'flex';
+            });
+            
+            // Navigation
+            document.querySelectorAll('.nav-links a[data-page]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const page = e.target.getAttribute('data-page');
+                    app.loadPage(page);
+                });
+            });
+            
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', (e) => {
+                e.preventDefault();
+                app.logout();
+            });
+            
+            // New project button
+            document.getElementById('newProjectBtn').addEventListener('click', () => {
+                app.loadPage('projects');
+            });
+            
+            // Invite button
+            document.getElementById('inviteBtn').addEventListener('click', () => {
+                app.loadPage('team');
+            });
+        });
+    </script>
+</body>
+</html>
